@@ -1,0 +1,22 @@
+{
+    "name": "dsas/loposum",
+    "description": "Populate a PO file by rot-13ing the messages",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Dean Sas",
+            "email": "dean@deansas.org"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "Loposum\\": "src/"
+        }
+    },
+    "minimum-stability": "stable",
+    "require": {
+        "sepia/po-parser": "dev-master",
+        "symfony/console": "^3.0"
+    },
+    "bin": ["bin/loposum"]
+}
