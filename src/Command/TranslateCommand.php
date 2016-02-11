@@ -42,7 +42,7 @@ class TranslateCommand extends Command
             if (array_key_exists('msgid_plural', $message)) {
                 $messageKey = 'msgstr[0]';
             }
-            if (!$message[$messageKey][$lineNo]) {
+            if (!isset($message[$messageKey][$lineNo]) || !$message[$messageKey][$lineNo]) {
                 $message[$messageKey][$lineNo] = preg_replace_callback('/(\w{2,})/', [$this, 'translateText'], $messageLine);
             }
         }
