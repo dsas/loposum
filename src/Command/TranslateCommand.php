@@ -6,8 +6,9 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Input\InputArgument;
-use Sepia\PoParser;
-use Sepia\FileHandler;
+use Sepia\PoParser\Parser;
+use Sepia\PoParser\SourceHandler\FileSystem;
+use Sepia\PoParser\PoCompiler;
 
 class TranslateCommand extends Command
 {
@@ -22,35 +23,51 @@ class TranslateCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-        $inFile = new FileHandler($input->getArgument('from'));
+        $inFile = new FileSystem($input->getArgument('from'));
         $outFileLocation = $input->getArgument('to');
-        $poParser = new PoParser($inFile);
+        $poParser = new Parser($inFile);
 
-        $messages = $poParser->parse($inFile);
+        $catalog = $poParser->parse();
 
-        foreach ($messages as $msgid => $message) {
-            $message = $this->translateMessage($message);
-            $poParser->setEntry($msgid, $message, false);
+        foreach ($catalog->getEntries() as $entry) {
+            $this->translateMessage($entry);
         }
-        $poParser->writeFile($outFileLocation);
+
+        $poCompiler = new PoCompiler();
+        $compiledContents = $poCompiler->compile($catalog);
+
+        file_put_contents($outFileLocation, $compiledContents);
     }
 
-    private function translateMessage($message)
+    private function translateMessage($entry)
     {
-        foreach ($message['msgid'] as $lineNo => $messageLine) {
-            $messageKey = 'msgstr';
-            if (array_key_exists('msgid_plural', $message)) {
-                $messageKey = 'msgstr[0]';
-            }
-            if (!isset($message[$messageKey][$lineNo]) || !$message[$messageKey][$lineNo]) {
-                $message[$messageKey][$lineNo] = preg_replace_callback('/(\w{2,})/', [$this, 'translateText'], $messageLine);
-            }
+        $fakedTranslation = false;
+        if (!$entry->getMsgId()) {
+            return false;
         }
-        return $message;
+
+        $text = $entry->getMsgStr();
+        if (!$text) {
+            $text = $this->translateText($entry->getMsgId());
+            $entry->setMsgStr($text);
+            $fakedTranslation = true;
+        }
+        if ($entry->isPlural()) {
+            $messageID = $entry->getMsgIdPlural();
+            $messageTexts = $entry->getMsgStrPlurals();
+            foreach ($messageTexts as $key => &$text) {
+                if (!$text) {
+                    $fakedTranslation = true;
+                    $text = $this->translateText($messageID);
+                }
+            }
+            $entry->setMsgStrPlurals($messageTexts);
+        }
+        return $fakedTranslation;
     }
 
     private function translateText($text)
     {
-        return str_rot13(array_shift($text));
+        return str_rot13($text);
     }
 }
