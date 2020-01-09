@@ -68,6 +68,11 @@ class TranslateCommand extends Command
 
     private function translateText($text)
     {
-        return str_rot13($text);
+        return preg_replace_callback(
+            '/\\\\([A-Za-z])/',
+            // Undo control characters
+            function ($matches) {return str_rot13($matches[0]); }, 
+            str_rot13($text)
+        );
     }
 }
